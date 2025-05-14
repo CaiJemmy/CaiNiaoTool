@@ -75,6 +75,6 @@ kubectl label node k8s-master01 env=test1
 echo "标签选择器，测试2: kubectl label node k8s-worker01 env=test2"
 kubectl label node k8s-worker01 env=test2
 
-echo "标签选择器，获取测试数据: kubectl get node -l \"env in(test1,test2)\""
-kubectl get node -l "env in(test1,test2)"
+echo "标签选择器，获取测试数据: kubectl get node -l \"env in (test1,test2)\""
+kubectl get node -l "env in (test1,test2)"
 
