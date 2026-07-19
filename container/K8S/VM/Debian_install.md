@@ -3,14 +3,14 @@
 > debian-12.10.0-amd64-DVD-1.iso
 
 
-# 安装配置
+## 安装配置
 
-> 4U4G 100GB 这个是模板，后期可以调整。
+> 4U4G 100GB 这个是模板，后期可以调整。  
 > 最小化安装
 
-# 安装后设置
+## 安装后设置
 
-## 1、放开root登录
+### 1、放开root登录
 
 ```shell
 # vim /etc/ssh/sshd_config
@@ -18,7 +18,7 @@ PermitRootLogin yes
 systemctl restart ssh
 ```
 
-## 2、更新镜像源
+### 2、更新镜像源
 
 ```shell
 sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak
@@ -48,13 +48,13 @@ sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys <密钥ID>
 其中 <密钥ID> 是错误信息中提示的密钥 ID。
 ```
 
-## 3、安装必要的软件包
+### 3、安装必要的软件包
 
 ```shell
 apt -y install wget vim lrzsz ipcalc
 ```
 
-## 4、关闭防火墙
+### 4、关闭防火墙
 
 ```shell
 # 在 Debian 12 中，默认的防火墙工具是 nftables（替代了之前的 iptables）。以下是关闭防火墙和查看防火墙状态的命令：
@@ -70,7 +70,7 @@ sudo ufw status
 systemctl status nftables.service
 ```
 
-## 5、selinux关闭
+### 5、selinux关闭
 
 ```shell
 # 所有主机均需要操作。修改SELinux配置需要重启操作系统。
@@ -82,7 +82,7 @@ sudo aa-status
 # 并提供额外的安全性。只有在特定情况下（如配置不当或兼容性问题）才需要关闭 AppArmor。
 ```
 
-## 6、内核升级
+### 6、内核升级
 
 > 通过 uname -r 检查内核版本，通过下面的命令进行升级
 
@@ -91,7 +91,7 @@ sudo apt update
 sudo apt upgrade
 ```
 
-## 7、时间同步配置
+### 7、时间同步配置
 
 ```shell
 # 所有主机均需要操作。最小化安装系统需要安装ntpdate软件。
@@ -100,7 +100,7 @@ crontab -l
 0 */1 * * * /usr/sbin/ntpdate time1.aliyun.com
 ```
 
-## 8、主机配置调整
+### 8、主机配置调整
 
 ```shell
 # 1、修改网卡配置，重点是删除uuid，并配置静态IP
@@ -162,5 +162,4 @@ sudo apt autoremove
 sudo apt clean
 sudo apt autoremove --purge
 sudo journalctl --vacuum-time=1d
-
 ```
