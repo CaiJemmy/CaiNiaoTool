@@ -1,0 +1,33 @@
+[Unit]
+Description=Apache Tomcat Web Application Container
+Documentation=https://tomcat.apache.org/
+After=network.target
+
+[Service]
+Type=forking
+
+# 运行用户
+User=www
+Group=www
+
+# 启动命令
+ExecStart=/usr/local/tomcat/bin/startup.sh
+ExecStop=/usr/local/tomcat/bin/shutdown.sh
+
+# 停止超时时间
+TimeoutStopSec=20
+
+# 进程管理
+Restart=on-failure
+RestartSec=10
+
+# 安全加固
+PrivateTmp=yes
+NoNewPrivileges=true
+
+# 资源限制
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target
