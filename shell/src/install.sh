@@ -14,6 +14,7 @@ init_pwd() {
     xcachepwd=$(</dev/urandom tr -dc A-Za-z0-9 | head -c8)
     jmxremotepwd=$(</dev/urandom tr -dc A-Za-z0-9 | head -c8)
     phpMyAdminpwd=$(</dev/urandom tr -dc A-Za-z0-9 | head -c8)
+    dbredispwd=$(</dev/urandom tr -dc A-Za-z0-9 | head -c8)
     dbinstallmethod=1
 }
 init_pwd
@@ -196,7 +197,7 @@ insert_database() {
 }
 insert_database
 
-insert_midder() {
+insert_middleware() {
     # Nginx server
     case "${nginx_option:-4}" in
     1)
@@ -226,20 +227,11 @@ insert_midder() {
         install_apache
     fi
 }
-insert_midder
+insert_middleware
 
 insert_php() {
-    # PHP
-    case "${php_option:-15}" in
-    13)
-        . include/php-8.3.sh
-        Install_PHP83 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-        ;;
-    14)
-        . include/php-8.4.sh
-        Install_PHP84 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-        ;;
-    15)
+    case "${php_option:-}" in
+    1)
         source "${CAINIAOTOOL_ROOT}/scripts/php_module/install_php-8.5.sh"
         install_PHP85
         ;;
@@ -248,18 +240,6 @@ insert_php() {
 insert_php
 
 PHP_addons() {
-    # PHP opcode cache PHP 编译时已经支持
-#    case "${phpcache_option:-1}" in
-#    1)
-#        source "${CAINIAOTOOL_ROOT}/scripts/php_module/extension_zendopcache.sh"
-#        install_zend_opcache
-#        ;;
-#    2)
-#        . include/apcu.sh
-#        Install_APCU 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-#        ;;
-#    esac
-
     # imagick
     if [ "${pecl_imagick:-}" == '1' ]; then
         source "${CAINIAOTOOL_ROOT}/scripts/php_module/extension_image_magick.sh"
@@ -274,29 +254,11 @@ PHP_addons() {
         install_pecl_gmagick
     fi
 
-    # fileinfo PHP 编译时已经支持
-#    if [ "${pecl_fileinfo}" == '1' ]; then
-#        . include/pecl_fileinfo.sh
-#        Install_pecl_fileinfo 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-#    fi
-
-    # imap 从 PHP 8.4 开始，IMAP 扩展已被移除并解绑（DEPRECATED and UNBUNDLED），PHP 8.5.1 也不再包含此扩展。
-#    if [ "${pecl_imap}" == '1' ]; then
-#        . include/pecl_imap.sh
-#        Install_pecl_imap 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-#    fi
-
     # ldap
     if [ "${pecl_ldap:-}" == '1' ]; then
         source "${CAINIAOTOOL_ROOT}/scripts/php_module/extension_pecl_ldap.sh"
         install_pecl_ldap
     fi
-
-    # calendar PHP 编译时已经支持
-#    if [ "${pecl_calendar}" == '1' ]; then
-#        . include/pecl_calendar.sh
-#        Install_pecl_calendar 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-#    fi
 
     # phalcon 安装编译时很吃内容，建议8GB起步，不建议使用
 #    if [ "${pecl_phalcon:-}" == '1' ]; then
@@ -316,29 +278,11 @@ PHP_addons() {
         install_pecl_yar
     fi
 
-    # pecl_memcached 能用redis就用redis
-#    if [ "${pecl_memcached}" == '1' ]; then
-#        . include/memcached.sh
-#        Install_pecl_memcached 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-#    fi
-
-    # pecl_memcache 已停止维护
-#    if [ "${pecl_memcache}" == '1' ]; then
-#        . include/memcached.sh
-#        Install_pecl_memcache 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-#    fi
-
     # pecl_redis
     if [ "${pecl_redis:-}" == '1' ]; then
         source "${CAINIAOTOOL_ROOT}/scripts/php_module/extension_pecl_redis.sh"
         install_pecl_redis
     fi
-
-    # pecl_mongodb 根据实际情况再说
-#    if [ "${pecl_mongodb}" == '1' ]; then
-#        . include/pecl_mongodb.sh
-#        Install_pecl_mongodb 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-#    fi
 
     # swoole
     if [ "${pecl_swoole:-}" == '1' ]; then
@@ -351,23 +295,17 @@ PHP_addons() {
         source "${CAINIAOTOOL_ROOT}/scripts/php_module/extension_pecl_xdebug.sh"
         install_pecl_xdebug
     fi
-
-    # pecl_pgsql 根据实际情况再说
-#    if [ -e "${pgsql_install_dir}/bin/psql" ]; then
-#        . include/pecl_pgsql.sh
-#        Install_pecl_pgsql 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-#    fi
 }
 
 [ "${mphp_addons_flag:-}" != 'y' ] && PHP_addons
 
 # 简写害死人，这里是指多版本的PHP
-if [ "${mphp_flag:-}" == 'y' ]; then
-    . include/mphp.sh
-    Install_MPHP 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-    php_install_dir=${php_install_dir}${mphp_ver}
-    PHP_addons
-fi
+#if [ "${mphp_flag:-}" == 'y' ]; then
+#    . include/mphp.sh
+#    Install_MPHP 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
+#    php_install_dir=${php_install_dir}${mphp_ver}
+#    PHP_addons
+#fi
 
 insert_jdk() {
     # JDK
@@ -396,29 +334,15 @@ insert_server_manager() {
         install_nodejs
     fi
 
-    # Pure-FTPd
-    if [ "${pureftpd_flag:-}" == 'y' ]; then
-        . include/pureftpd.sh
-        Install_PureFTPd 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-    fi
-
-    # phpMyAdmin
     if [ "${phpmyadmin_flag:-}" == 'y' ]; then
         source "${CAINIAOTOOL_ROOT}/scripts/server_manager/phpmyadmin.sh"
         install_phpMyAdmin
     fi
 
-    # redis
     if [ "${redis_flag:-}" == 'y' ]; then
-        . include/redis.sh
-        Install_redis_server 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
+        source "${CAINIAOTOOL_ROOT}/scripts/db_module/install_redis-8.6.4.sh"
+        install_redis_server
     fi
-
-    # memcached 使用redis
-#    if [ "${memcached_flag}" == 'y' ]; then
-#        . include/memcached.sh
-#        Install_memcached_server 2>&1 | tee -a ${CAINIAOTOOL_ROOT}/install.log
-#    fi
 }
 insert_server_manager
 

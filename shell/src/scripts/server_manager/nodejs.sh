@@ -26,7 +26,7 @@ EOF
     popd >/dev/null
 }
 
-Uninstall_Nodejs() {
+uninstall_nodejs() {
     if [ -e "${nodejs_install_dir}" ]; then
         rm -rf ${nodejs_install_dir} /etc/profile.d/nodejs.sh
         echo "${CMSG}Nodejs uninstall completed! ${CEND}"

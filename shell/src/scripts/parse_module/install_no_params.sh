@@ -176,9 +176,6 @@ choice_database() {
                     echo 'Please select a version of the Database:'
                     echo -e "\t${C_MSG} 0${C_END}. Install MySQL-8.4 (LTS)"
                     echo -e "\t${C_MSG} 5${C_END}. Install MariaDB-10.11"
-                    echo -e "\t${C_MSG} 9${C_END}. Install Percona-8.0"
-                    echo -e "\t${C_MSG}13${C_END}. Install PostgreSQL"
-                    echo -e "\t${C_MSG}14${C_END}. Install MongoDB"
                     read -e -p "Please input a number:(Default 0 press Enter) " db_option
                     db_option=${db_option:-0}
                     if [[ "${db_option}" =~ ^[0-9]$|^1[0-4]$ ]]; then
@@ -270,32 +267,7 @@ choice_php() {
                     unset php_option
                     break
                 }
-                while :; do
-                    echo
-                    echo 'Please select a version of the PHP:'
-                    echo -e "\t${C_MSG} 1${C_END}. Install php-5.3"
-                    echo -e "\t${C_MSG} 2${C_END}. Install php-5.4"
-                    echo -e "\t${C_MSG} 3${C_END}. Install php-5.5"
-                    echo -e "\t${C_MSG} 4${C_END}. Install php-5.6"
-                    echo -e "\t${C_MSG} 5${C_END}. Install php-7.0"
-                    echo -e "\t${C_MSG} 6${C_END}. Install php-7.1"
-                    echo -e "\t${C_MSG} 7${C_END}. Install php-7.2"
-                    echo -e "\t${C_MSG} 8${C_END}. Install php-7.3"
-                    echo -e "\t${C_MSG} 9${C_END}. Install php-7.4"
-                    echo -e "\t${C_MSG}10${C_END}. Install php-8.0"
-                    echo -e "\t${C_MSG}11${C_END}. Install php-8.1"
-                    echo -e "\t${C_MSG}12${C_END}. Install php-8.2"
-                    echo -e "\t${C_MSG}13${C_END}. Install php-8.3"
-                    echo -e "\t${C_MSG}14${C_END}. Install php-8.4"
-                    echo -e "\t${C_MSG}15${C_END}. Install php-8.5"
-                    read -e -p "Please input a number:(Default 15 press Enter) " php_option
-                    php_option=${php_option:-15}
-                    if [[ ! ${php_option} =~ ^[1-9]$|^1[0-5]$ ]]; then
-                        echo "${C_WARNING}input error! Please only input number 1~14${C_END}"
-                    else
-                        break
-                    fi
-                done
+                php_option=1
             else
                 php_option=""
             fi
@@ -312,51 +284,17 @@ php_opcode_cache_and_extensions() {
 
     # PHP opcode cache and extensions
     if [[ ${php_option} =~ ^[1-9]$|^1[0-3]$ ]] || [ -e "${php_install_dir}/bin/phpize" ]; then
-        while :; do
-            echo
-            read -e -p "Do you want to install opcode cache of the PHP? [y/n]: " phpcache_flag
-            if [[ ! ${phpcache_flag} =~ ^[y,n]$ ]]; then
-                echo "${C_WARNING}input error! Please only input 'y' or 'n'${C_END}"
-            else
-                if [ "${phpcache_flag}" == 'y' ]; then
-                    if [[ ${php_option} =~ ^[5-9]$|^1[0-4]$ ]] || [[ "${PHP_main_ver}" =~ ^7.[0-4]$|^8.[0-4]$ ]]; then
-                        while :; do
-                            echo 'Please select a opcode cache of the PHP:'
-                            echo -e "\t${C_MSG}1${C_END}. Install Zend OPcache"
-                            echo -e "\t${C_MSG}2${C_END}. Install APCU"
-                            read -e -p "Please input a number:(Default 1 press Enter) " phpcache_option
-                            phpcache_option=${phpcache_option:-1}
-                            if [[ ! ${phpcache_option} =~ ^[1-2]$ ]]; then
-                                echo "${C_WARNING}input error! Please only input number 1~2${C_END}"
-                            else
-                                break
-                            fi
-                        done
-                    fi
-                fi
-                break
-            fi
-        done
-
         # PHP extension
         while :; do
             echo
             echo 'Please select PHP extensions:'
             echo -e "\t${C_MSG} 0${C_END}. Do not install"
-            echo -e "\t${C_MSG} 1${C_END}. Install zendguardloader(PHP<=5.6)"
-            echo -e "\t${C_MSG} 2${C_END}. Install ioncube"
-            echo -e "\t${C_MSG} 3${C_END}. Install sourceguardian(PHP<=7.2)"
             echo -e "\t${C_MSG} 4${C_END}. Install imagick"
             echo -e "\t${C_MSG} 5${C_END}. Install gmagick"
-            echo -e "\t${C_MSG} 6${C_END}. Install fileinfo"
-            echo -e "\t${C_MSG} 7${C_END}. Install imap"
             echo -e "\t${C_MSG} 8${C_END}. Install ldap"
             echo -e "\t${C_MSG} 9${C_END}. Install phalcon(PHP>=5.5)"
             echo -e "\t${C_MSG}10${C_END}. Install yaf(PHP>=7.0)"
             echo -e "\t${C_MSG}11${C_END}. Install redis"
-            echo -e "\t${C_MSG}12${C_END}. Install memcached"
-            echo -e "\t${C_MSG}13${C_END}. Install memcache"
-            echo -e "\t${C_MSG}14${C_END}. Install mongodb"
             echo -e "\t${C_MSG}15${C_END}. Install swoole"
             echo -e "\t${C_MSG}16${C_END}. Install xdebug(PHP>=5.5)"
             read -e -p "Please input numbers:(Default '4 11 12' press Enter) " phpext_option
@@ -374,20 +312,12 @@ php_opcode_cache_and_extensions() {
                 echo
                 continue
             else
-                [ -n "$(echo "${array_phpext[@]}" | grep -w 1)" ] && pecl_zendguardloader=1
-                [ -n "$(echo "${array_phpext[@]}" | grep -w 2)" ] && pecl_ioncube=1
-                [ -n "$(echo "${array_phpext[@]}" | grep -w 3)" ] && pecl_sourceguardian=1
                 [ -n "$(echo "${array_phpext[@]}" | grep -w 4)" ] && pecl_imagick=1
                 [ -n "$(echo "${array_phpext[@]}" | grep -w 5)" ] && pecl_gmagick=1
-                [ -n "$(echo "${array_phpext[@]}" | grep -w 6)" ] && pecl_fileinfo=1
-                [ -n "$(echo "${array_phpext[@]}" | grep -w 7)" ] && pecl_imap=1
                 [ -n "$(echo "${array_phpext[@]}" | grep -w 8)" ] && pecl_ldap=1
                 [ -n "$(echo "${array_phpext[@]}" | grep -w 9)" ] && pecl_phalcon=1
                 [ -n "$(echo "${array_phpext[@]}" | grep -w 10)" ] && pecl_yaf=1
                 [ -n "$(echo "${array_phpext[@]}" | grep -w 11)" ] && pecl_redis=1
-                [ -n "$(echo "${array_phpext[@]}" | grep -w 12)" ] && pecl_memcached=1
-                [ -n "$(echo "${array_phpext[@]}" | grep -w 13)" ] && pecl_memcache=1
-                [ -n "$(echo "${array_phpext[@]}" | grep -w 14)" ] && pecl_mongodb=1
                 [ -n "$(echo "${array_phpext[@]}" | grep -w 15)" ] && pecl_swoole=1
                 [ -n "$(echo "${array_phpext[@]}" | grep -w 16)" ] && pecl_xdebug=1
                 break
@@ -406,22 +336,6 @@ choice_nodejs() {
             [ "${nodejs_flag}" == 'y' -a -e "${nodejs_install_dir}/bin/node" ] && {
                 echo "${C_WARNING}Nodejs already installed! ${C_END}"
                 unset nodejs_flag
-            }
-            break
-        fi
-    done
-}
-
-choice_pureftpd() {
-    while :; do
-        echo
-        read -e -p "Do you want to install Pure-FTPd? [y/n]: " pureftpd_flag
-        if [[ ! ${pureftpd_flag} =~ ^[y,n]$ ]]; then
-            echo "${C_WARNING}input error! Please only input 'y' or 'n'${C_END}"
-        else
-            [ "${pureftpd_flag}" == 'y' -a -e "${pureftpd_install_dir}/sbin/pure-ftpwho" ] && {
-                echo "${C_WARNING}Pure-FTPd already installed! ${C_END}"
-                unset pureftpd_flag
             }
             break
         fi
@@ -462,22 +376,6 @@ choice_redis() {
     done
 }
 
-choice_memcached() {
-    while :; do
-        echo
-        read -e -p "Do you want to install memcached-server? [y/n]: " memcached_flag
-        if [[ ! ${memcached_flag} =~ ^[y,n]$ ]]; then
-            echo "${C_WARNING}input error! Please only input 'y' or 'n'${C_END}"
-        else
-            [ "${memcached_flag}" == 'y' -a -e "${memcached_install_dir}/bin/memcached" ] && {
-                echo "${C_WARNING}memcached-server already installed! ${C_END}"
-                unset memcached_flag
-            }
-            break
-        fi
-    done
-}
-
 insert_no_params() {
     if [[ "${1}" == "0" ]]; then
         check_firewall
@@ -486,9 +384,7 @@ insert_no_params() {
         choice_php
         php_opcode_cache_and_extensions
         choice_nodejs
-        choice_pureftpd
         choice_phpmyadmin
         choice_redis
-        choice_memcached
     fi
 }
