@@ -1,0 +1,469 @@
+version: '3.8'
+
+# ============================================
+# 网络定义
+# ============================================
+networks:
+  mysql-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ============================================
+# 卷定义
+# ============================================
+volumes:
+  mysql-master-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./mysql/master/data
+  
+  mysql-slave1-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./mysql/slave1/data
+  
+  mysql-slave2-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./mysql/slave2/data
+  
+  mysql-backup:
+    driver: local
+  
+  prometheus-data:
+    driver: local
+  
+  grafana-data:
+    driver: local
+
+# ============================================
+# 服务定义
+# ============================================
+services:
+
+  # ==========================================
+  # MySQL Master (主库)
+  # ==========================================
+  mysql-master:
+    image: mysql:8.0.35
+    container_name: mysql-master
+    hostname: mysql-master
+    restart: unless-stopped
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Root@123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-testdb}
+      MYSQL_USER: ${MYSQL_USER:-appuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-App@123456}
+      MYSQL_REPLICATION_USER: repl
+      MYSQL_REPLICATION_PASSWORD: ${REPL_PASSWORD:-Repl@123456}
+      TZ: Asia/Shanghai
+    
+    volumes:
+      # 配置文件
+      - ./mysql/master/conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      # 数据目录
+      - mysql-master-data:/var/lib/mysql
+      # 初始化脚本
+      - ./mysql/master/init:/docker-entrypoint-initdb.d:ro
+      # 备份目录
+      - mysql-backup:/backup
+      # 日志目录
+      - ./mysql/master/logs:/var/log/mysql
+    
+    ports:
+      - "3306:3306"
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.10
+    
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-connections=1000
+      - --max-allowed-packet=256M
+    
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    
+    labels:
+      - "com.mysql.role=master"
+      - "com.mysql.cluster=production"
+
+  # ==========================================
+  # MySQL Slave 1 (从库1)
+  # ==========================================
+  mysql-slave1:
+    image: mysql:8.0.35
+    container_name: mysql-slave1
+    hostname: mysql-slave1
+    restart: unless-stopped
+    
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Root@123456}
+      MYSQL_REPLICATION_USER: repl
+      MYSQL_REPLICATION_PASSWORD: ${REPL_PASSWORD:-Repl@123456}
+      MYSQL_MASTER_HOST: mysql-master
+      MYSQL_MASTER_PORT: 3306
+      TZ: Asia/Shanghai
+    
+    volumes:
+      - ./mysql/slave1/conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - mysql-slave1-data:/var/lib/mysql
+      - ./mysql/slave1/init:/docker-entrypoint-initdb.d:ro
+      - ./mysql/slave1/logs:/var/log/mysql
+    
+    ports:
+      - "3307:3306"
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.11
+    
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-connections=1000
+      - --read-only=ON
+    
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    
+    labels:
+      - "com.mysql.role=slave"
+      - "com.mysql.cluster=production"
+
+  # ==========================================
+  # MySQL Slave 2 (从库2)
+  # ==========================================
+  mysql-slave2:
+    image: mysql:8.0.35
+    container_name: mysql-slave2
+    hostname: mysql-slave2
+    restart: unless-stopped
+    
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Root@123456}
+      MYSQL_REPLICATION_USER: repl
+      MYSQL_REPLICATION_PASSWORD: ${REPL_PASSWORD:-Repl@123456}
+      MYSQL_MASTER_HOST: mysql-master
+      MYSQL_MASTER_PORT: 3306
+      TZ: Asia/Shanghai
+    
+    volumes:
+      - ./mysql/slave2/conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - mysql-slave2-data:/var/lib/mysql
+      - ./mysql/slave2/init:/docker-entrypoint-initdb.d:ro
+      - ./mysql/slave2/logs:/var/log/mysql
+    
+    ports:
+      - "3308:3306"
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.12
+    
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-connections=1000
+      - --read-only=ON
+    
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    
+    labels:
+      - "com.mysql.role=slave"
+      - "com.mysql.cluster=production"
+
+  # ==========================================
+  # ProxySQL (读写分离)
+  # ==========================================
+  proxysql:
+    image: proxysql/proxysql:2.5.5
+    container_name: proxysql
+    hostname: proxysql
+    restart: unless-stopped
+    
+    depends_on:
+      - mysql-master
+      - mysql-slave1
+      - mysql-slave2
+    
+    volumes:
+      - ./proxysql/proxysql.cnf:/etc/proxysql.cnf:ro
+      - ./proxysql/scripts:/scripts:ro
+    
+    ports:
+      - "6033:6033"    # MySQL 协议端口
+      - "6032:6032"    # 管理端口
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.20
+    
+    healthcheck:
+      test: ["CMD", "mysql", "-h127.0.0.1", "-P6032", "-uadmin", "-padmin", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    
+    labels:
+      - "com.proxysql.role=proxy"
+
+  # ==========================================
+  # HAProxy (负载均衡)
+  # ==========================================
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: haproxy
+    hostname: haproxy
+    restart: unless-stopped
+    
+    depends_on:
+      - mysql-master
+      - mysql-slave1
+      - mysql-slave2
+    
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    
+    ports:
+      - "3320:3306"     # MySQL 写端口
+      - "3321:3307"     # MySQL 读端口
+      - "8404:8404"     # HAProxy 统计页面
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.30
+    
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8404/stats || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    
+    labels:
+      - "com.haproxy.role=loadbalancer"
+
+  # ==========================================
+  # MySQL Exporter (Master)
+  # ==========================================
+  mysql-exporter-master:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: mysql-exporter-master
+    restart: unless-stopped
+    
+    depends_on:
+      - mysql-master
+    
+    environment:
+      DATA_SOURCE_NAME: "root:${MYSQL_ROOT_PASSWORD}@(mysql-master:3306)/"
+    
+    ports:
+      - "9104:9104"
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.40
+    
+    command:
+      - --collect.info_schema.tablestats
+      - --collect.info_schema.userstats
+      - --collect.info_schema.query_response_time
+      - --collect.auto_increment.columns
+      - --collect.perf_schema.tableiowaits
+      - --collect.perf_schema.indexiowaits
+
+  # ==========================================
+  # MySQL Exporter (Slave1)
+  # ==========================================
+  mysql-exporter-slave1:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: mysql-exporter-slave1
+    restart: unless-stopped
+    
+    depends_on:
+      - mysql-slave1
+    
+    environment:
+      DATA_SOURCE_NAME: "root:${MYSQL_ROOT_PASSWORD}@(mysql-slave1:3306)/"
+    
+    ports:
+      - "9105:9104"
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.41
+
+  # ==========================================
+  # MySQL Exporter (Slave2)
+  # ==========================================
+  mysql-exporter-slave2:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: mysql-exporter-slave2
+    restart: unless-stopped
+    
+    depends_on:
+      - mysql-slave2
+    
+    environment:
+      DATA_SOURCE_NAME: "root:${MYSQL_ROOT_PASSWORD}@(mysql-slave2:3306)/"
+    
+    ports:
+      - "9106:9104"
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.42
+
+  # ==========================================
+  # Prometheus (监控)
+  # ==========================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: prometheus
+    hostname: prometheus
+    restart: unless-stopped
+    
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    
+    ports:
+      - "9090:9090"
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.50
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  # ==========================================
+  # Grafana (可视化)
+  # ==========================================
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: grafana
+    hostname: grafana
+    restart: unless-stopped
+    
+    depends_on:
+      - prometheus
+    
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-Admin@123456}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    
+    ports:
+      - "3000:3000"
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.51
+
+  # ==========================================
+  # Backup Service (定时备份)
+  # ==========================================
+  backup-service:
+    image: mysql:8.0.35
+    container_name: mysql-backup
+    restart: unless-stopped
+    
+    depends_on:
+      - mysql-master
+    
+    environment:
+      MYSQL_HOST: mysql-master
+      MYSQL_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      BACKUP_CRON: "0 2 * * *"  # 每天凌晨2点备份
+    
+    volumes:
+      - mysql-backup:/backup
+      - ./scripts/backup.sh:/scripts/backup.sh:ro
+    
+    networks:
+      mysql-cluster:
+        ipv4_address: 172.20.0.60
+    
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        apt-get update && apt-get install -y cron
+        echo "$BACKUP_CRON root /scripts/backup.sh" > /etc/cron.d/mysql-backup
+        chmod 0644 /etc/cron.d/mysql-backup
+        crontab /etc/cron.d/mysql-backup
+        cron && tail -f /var/log/cron.log

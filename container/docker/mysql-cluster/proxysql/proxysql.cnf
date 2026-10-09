@@ -1,0 +1,148 @@
+# ==================================================
+# ProxySQL 配置 - 读写分离
+# ==================================================
+
+datadir="/var/lib/proxysql"
+
+# 管理接口配置
+admin_variables=
+{
+    admin_credentials="admin:admin;radmin:radmin"
+    mysql_ifaces="0.0.0.0:6032"
+    refresh_interval=2000
+    web_enabled=true
+    web_port=6080
+}
+
+# MySQL 接口配置
+mysql_variables=
+{
+    threads=4
+    max_connections=2048
+    default_query_delay=0
+    default_query_timeout=36000000
+    have_compress=true
+    poll_timeout=2000
+    interfaces="0.0.0.0:6033"
+    default_schema="information_schema"
+    stacksize=1048576
+    server_version="8.0.35"
+    connect_timeout_server=3000
+    monitor_username="monitor"
+    monitor_password="Monitor@123456"
+    monitor_history=600000
+    monitor_connect_interval=60000
+    monitor_ping_interval=10000
+    monitor_read_only_interval=1500
+    monitor_read_only_timeout=500
+    ping_interval_server_msec=120000
+    ping_timeout_server=500
+    commands_stats=true
+    sessions_sort=true
+    connect_retries_on_failure=10
+}
+
+# ===== MySQL 服务器配置 =====
+mysql_servers =
+(
+    # Master - 写操作
+    {
+        address="mysql-master"
+        port=3306
+        hostgroup=10              # 写组
+        max_connections=1000
+        max_replication_lag=10
+        weight=1
+        comment="Master Server"
+    },
+    # Slave1 - 读操作
+    {
+        address="mysql-slave1"
+        port=3306
+        hostgroup=20              # 读组
+        max_connections=1000
+        max_replication_lag=10
+        weight=1
+        comment="Slave1 Server"
+    },
+    # Slave2 - 读操作
+    {
+        address="mysql-slave2"
+        port=3306
+        hostgroup=20              # 读组
+        max_connections=1000
+        max_replication_lag=10
+        weight=1
+        comment="Slave2 Server"
+    }
+)
+
+# ===== MySQL 用户配置 =====
+mysql_users =
+(
+    {
+        username = "appuser"
+        password = "App@123456"
+        default_hostgroup = 10    # 默认写组
+        max_connections = 1000
+        default_schema = "testdb"
+        active = 1
+        transaction_persistent = 1
+    },
+    {
+        username = "readonly"
+        password = "Readonly@123456"
+        default_hostgroup = 20    # 只读用户默认读组
+        max_connections = 1000
+        default_schema = "testdb"
+        active = 1
+    }
+)
+
+# ===== 查询路由规则 =====
+mysql_query_rules =
+(
+    # 规则 1: SELECT FOR UPDATE 路由到 Master
+    {
+        rule_id=1
+        active=1
+        match_pattern="^SELECT .* FOR UPDATE"
+        destination_hostgroup=10
+        apply=1
+        comment="SELECT FOR UPDATE to Master"
+    },
+    # 规则 2: SELECT 路由到 Slave
+    {
+        rule_id=2
+        active=1
+        match_pattern="^SELECT"
+        destination_hostgroup=20
+        apply=1
+        comment="SELECT to Slaves"
+    },
+    # 规则 3: 写操作路由到 Master
+    {
+        rule_id=3
+        active=1
+        match_pattern="^(INSERT|UPDATE|DELETE|REPLACE|CREATE|ALTER|DROP|TRUNCATE)"
+        destination_hostgroup=10
+        apply=1
+        comment="Write operations to Master"
+    }
+)
+
+# ===== 复制组配置 =====
+mysql_replication_hostgroups =
+(
+    {
+        writer_hostgroup=10       # 写组
+        reader_hostgroup=20       # 读组
+        check_type="read_only"
+        comment="MySQL Replication"
+    }
+)
+
+# ===== 监控配置 =====
+mysql_galera_hostgroups =
+(
+)

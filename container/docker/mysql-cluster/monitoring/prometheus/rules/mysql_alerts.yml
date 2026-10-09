@@ -1,0 +1,105 @@
+# ==================================================
+# MySQL 告警规则
+# ==================================================
+
+groups:
+  - name: mysql_alerts
+    interval: 30s
+    rules:
+      # MySQL 实例宕机
+      - alert: MySQLDown
+        expr: mysql_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MySQL 实例宕机 (instance {{ $labels.instance }})"
+          description: "MySQL 实例 {{ $labels.instance }} 已宕机超过 1 分钟"
+
+      # 主从复制中断
+      - alert: MySQLReplicationStopped
+        expr: mysql_slave_status_slave_io_running == 0 or mysql_slave_status_slave_sql_running == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MySQL 复制中断 (instance {{ $labels.instance }})"
+          description: "MySQL Slave {{ $labels.instance }} 复制已中断"
+
+      # 主从复制延迟过高
+      - alert: MySQLReplicationLagHigh
+        expr: mysql_slave_status_seconds_behind_master > 60
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL 复制延迟过高 (instance {{ $labels.instance }})"
+          description: "MySQL Slave {{ $labels.instance }} 复制延迟 {{ $value }}s"
+
+      # 连接数过高
+      - alert: MySQLTooManyConnections
+        expr: (mysql_global_status_threads_connected / mysql_global_variables_max_connections) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL 连接数过高 (instance {{ $labels.instance }})"
+          description: "MySQL {{ $labels.instance }} 连接数使用率 {{ $value | humanizePercentage }}"
+
+      # 慢查询过多
+      - alert: MySQLSlowQueries
+        expr: rate(mysql_global_status_slow_queries[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL 慢查询过多 (instance {{ $labels.instance }})"
+          description: "MySQL {{ $labels.instance }} 慢查询速率: {{ $value | humanize }}/s"
+
+      # InnoDB 缓冲池命中率低
+      - alert: MySQLInnoDBBufferPoolHitRateLow
+        expr: |
+          (
+            rate(mysql_global_status_innodb_buffer_pool_read_requests[5m]) / 
+            (rate(mysql_global_status_innodb_buffer_pool_read_requests[5m]) + rate(mysql_global_status_innodb_buffer_pool_reads[5m]))
+          ) < 0.95
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL InnoDB 缓冲池命中率低 (instance {{ $labels.instance }})"
+          description: "MySQL {{ $labels.instance }} 缓冲池命中率: {{ $value | humanizePercentage }}"
+
+      # 磁盘空间不足
+      - alert: MySQLDiskSpaceLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{mountpoint="/var/lib/mysql"} / 
+            node_filesystem_size_bytes{mountpoint="/var/lib/mysql"}
+          ) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL 磁盘空间不足 (instance {{ $labels.instance }})"
+          description: "MySQL {{ $labels.instance }} 可用磁盘空间 < 10%"
+
+      # 表锁等待时间过长
+      - alert: MySQLTableLocksWaitHigh
+        expr: rate(mysql_global_status_table_locks_waited[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL 表锁等待过多 (instance {{ $labels.instance }})"
+          description: "MySQL {{ $labels.instance }} 表锁等待: {{ $value | humanize }}/s"
+
+      # Binlog 文件过多
+      - alert: MySQLBinlogFilesTooMany
+        expr: mysql_global_status_binlog_cache_disk_use > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL Binlog 文件过多 (instance {{ $labels.instance }})"
+          description: "MySQL {{ $labels.instance }} Binlog 缓存磁盘使用: {{ $value }}"
