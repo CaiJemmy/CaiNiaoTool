@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # ---------- cAdvisor：只负责采集并暴露指标 ----------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1   # 可用 zcube/cadvisor:v0.49.1 替代
+    container_name: cadvisor
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - cig-net
+
+
+  # ---------- Telegraf：从 cAdvisor 拉取指标并写入 InfluxDB ----------
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    restart: unless-stopped
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - influxdb
+      - cadvisor
+    networks:
+      - cig-net
+
+  # ---------- InfluxDB：时序数据存储 ----------
+  influxdb:
+    image: influxdb:1.8
+    container_name: influxdb
+    restart: unless-stopped
+    environment:
+      - INFLUXDB_DB=cadvisor
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin123
+      - INFLUXDB_USER=grafana
+      - INFLUXDB_USER_PASSWORD=grafana123
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+    networks:
+      - cig-net
+
+  # ---------- Grafana：可视化展示 ----------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - influxdb
+    networks:
+      - cig-net
+
+volumes:
+  influxdb-data:
+  grafana-data:
+
+networks:
+  cig-net:
+    driver: bridge
