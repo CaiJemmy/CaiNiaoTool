@@ -1,4 +1,12 @@
-icu 卸载
+
+## 安装LAMP系统环境
+
+- 参考 [https://oneinstack.com](https://oneinstack.com)，根据自己需求，做相应适配。
+- 增加日志及通用函数库。
+
+## 软件卸载
+
+### icu 卸载
 
 ```shell
 # 1./usr/local/lib
@@ -91,3 +99,4 @@ sleep 3
 echo "清理旧文件..."
 rm -f /data/mysql/mysql.pid /tmp/mysql.sock /data/mysql/*.lock 2>/dev/null
 ```
+
