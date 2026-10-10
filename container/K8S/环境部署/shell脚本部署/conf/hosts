@@ -1,0 +1,14 @@
+[hosts]
+10.0.0.12 kubernetes-master1
+10.0.0.13 kubernetes-master2
+10.0.0.14 kubernetes-master3
+10.0.0.15 kubernetes-node1
+10.0.0.16 kubernetes-node2
+10.0.0.17 kubernetes-node3
+
+[ha]
+10.0.0.18 kubernetes-ha1 MASTER
+10.0.0.19 kubernetes-ha2 BACKUP
+
+[harbor]
+10.0.0.20 kubernetes-register

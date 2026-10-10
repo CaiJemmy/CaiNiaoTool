@@ -1,0 +1,86 @@
+# 基础环境配置
+# [base_info]
+login_user='root'
+login_pass='Changeme_12'
+# os_type='debian'
+domain_name='superopsmsb.com'
+underlay_network='10.0.0'
+
+# 基础环境目录
+# [base_dir]
+root_dir=$(dirname "$PWD")
+scripts_dir="${root_dir}/scripts"
+softs_dir="${root_dir}/softs"
+confs_dir="${root_dir}/conf"
+images_dir="${root_dir}/images"
+yamls_dir="${root_dir}/yaml"
+user_dir='/root'
+
+# 文件名称
+# [file_name]
+host_name='hosts'
+host_file="/etc/${host_name}"
+base_env_scripts='02_remote_host_auth.sh'
+k8s_kernel_scripts='03_kubernetes_kernel_conf.sh'
+k8s_docker_online='04_kubernetes_docker_install_online.sh'
+k8s_docker_offline='04_kubernetes_docker_install_offline.sh'
+k8s_harbor_scripts='05_kubernetes_harbor_install_offline.sh'
+k8s_ha_online='06_kubernetes_ha_install_online.sh'
+k8s_ha_offline='06_kubernetes_ha_install_offline.sh'
+k8s_cri_scripts='07_kubernetes_cri_install.sh'
+k8s_cluster_scripts='08_kubernetes_cluster_create.sh'
+k8s_reset_scripts='09_kubernetes_cluster_reset.sh'
+k8s_master_tail='k8s_master_tail.sh'
+# 软件名称
+# [softs]
+centos_expect='expect-5.45-14.el7_1.x86_64.rpm'
+ubuntu_expect='expect_5.45.4-2build1_amd64.deb'
+
+# 私有仓库属性
+# [register]
+harbor_user='shuji'
+harbor_passwd='A12345678a'
+harbor_version='v2.15.2'
+harbor_softs="harbor-offline-installer-${harbor_version}.tgz"
+harbor_repo='https://github.com/goharbor/harbor/releases/download'
+harbor_url="${harbor_repo}/${harbor_version}/${harbor_softs}"
+
+# docker-compose
+# [docker-compose]
+compose_version='v2.4.0'
+compose_softs="docker-compose-linux-x86_64"
+compose_repo='https://github.com/docker/compose/releases/download'
+compose_url="${compose_repo}/${compose_version}/${compose_softs}"
+
+# docker容器引擎
+# [docker]
+docker_version='23.0.0'
+docker_softs="docker-${docker_version}.tgz"
+docker_repo='https://download.docker.com/linux/static/stable/x86_64/'
+docker_url="${docker_repo}/${docker_softs}"
+
+# 高可用环境
+# [ha]
+has_ha="true"
+kubernetes_vip='10.0.0.200'
+kubernetes_port='6443'
+haproxy_status_port='9999'
+
+keepalived_dir='/etc/keepalived'
+haproxy_dir='/etc/haproxy'
+keepalived_conf='keepalived.conf'
+haproxy_conf='haproxy.cfg'
+keepalived_check='check_haproxy.sh'
+
+# kubernetes配置
+# [kubernetes]
+# is_online="true"
+k8s_version='1.26.1'
+# k8s_softs_dir="${softs_dir}/k8s-centos"
+centos_repo_file='/etc/yum.repos.d/kubernetes.repo'
+ubuntu_repo_file='/etc/apt/sources.list.d/kubernetes.list'
+harbor_repo='google_containers'
+harbor_mirror='kubernetes-register.superopsmsb.com'
+ali_mirror="registry.aliyuncs.com/${harbor_repo}"
+init_msg='/tmp/msg.txt'
+cri_option='--cri-socket unix:///var/run/cri-dockerd.sock'
