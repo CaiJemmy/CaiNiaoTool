@@ -1,0 +1,6 @@
+pyyaml>=6.0 # yaml 插件
+lunardate>=0.2 # 中国农历插件
+cryptography>=46.0.3 # 加解密插件
+pytest-html>=4.1 # 用例报告插件
+pytest-cov>=7.0 # 用例覆盖率插件
+pytest-xdist>=3.8 # 并行执行

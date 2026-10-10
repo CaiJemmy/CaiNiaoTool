@@ -1,0 +1,47 @@
+# .coveragerc
+[run]
+# 指定要测量的源文件
+source =
+    src
+    .
+
+# 要跳过的文件（支持通配符）
+omit =
+    */tests/*
+    */migrations/*
+    */__pycache__/*
+    */test_*.py
+    */*test.py
+    */conftest.py
+    */setup.py
+    */version.py
+    */__init__.py
+
+# 要包含的文件（优先级高于 omit）
+include =
+    src/*.py
+    src/**/*.py
+
+[report]
+# 忽略某些行（基于正则表达式）
+exclude_lines =
+    pragma: no cover          # 忽略 # pragma: no cover 注释的行
+    def __repr__              # 忽略 __repr__ 方法
+    if self.debug:            # 忽略调试代码
+    raise AssertionError      # 忽略断言错误
+    raise NotImplementedError # 忽略未实现错误
+    if 0:                     # 忽略永远不会执行的代码
+    if __name__ == .__main__.: # 忽略主模块检查
+
+# 包含某些行（即使有 no cover 注释）
+include_lines =
+    def foo                   # 包含 foo 函数
+
+[html]
+# HTML 报告配置
+directory = reports/coverage/coverage
+title = Test Coverage Report
+
+[xml]
+# XML 报告配置
+output = reports/coverage/coverage.xml
