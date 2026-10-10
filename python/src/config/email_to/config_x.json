@@ -1,0 +1,23 @@
+{
+  "birthday": {
+    "gregorian": "05月11日",
+    "lunar": "03月25日"
+  },
+  "mail": {
+    "to_addrs": [
+      "123894924@qq.com"
+    ],
+    "cc_addrs": [
+
+    ],
+    "bcc_addrs": [
+
+    ],
+    "subject": "生日提醒",
+    "text_content": "",
+    "html_content": "",
+    "attachments": [
+
+    ]
+  }
+}
