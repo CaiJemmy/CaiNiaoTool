@@ -9,12 +9,14 @@
 
 # Check if user is root
 [ "$(id -u)" != "0" ] && {
-  echo "${_C_RED}Error: You must be root to run this script${_C_RESET}"
+  echo "Error: You must be root to run this script"
   exit 1
 }
 
 # 加载配置文件
 source "./lib/utils.sh"
+source "./lib/logging.sh"
+
 root_dir=$(dirname "$PWD")
 [ -f "${root_dir}/conf/config" ] && . "${root_dir}/conf/config" || exit
 
@@ -23,13 +25,13 @@ target_type=(基础 内核 容器 harbor 高可用 k8s 管理 退出)
 
 # 菜单
 deploy_menu(){
-  echo "${_C_RED}K8s平台自动化管理界面${_C_RESET}"
-  echo "====================================================="
-  echo "${_C_GREEN} 1: 基础环境定制   2: 内核模块配置  ${_C_RESET}"
-  echo "${_C_GREEN} 3: 容器环境定制   4: 部署镜像仓库  ${_C_RESET}"
-  echo "${_C_GREEN} 5: 部署高可用环境  6: k8s环境部署  ${_C_RESET}"
-  echo "${_C_GREEN} 7: 管理k8s环境    8: 退出操作  ${_C_RESET}"
-  echo "====================================================="
+  log_info "K8s平台自动化管理界面"
+  log_info "====================================================="
+  log_info " 1: 基础环境定制   2: 内核模块配置  "
+  log_info " 3: 容器环境定制   4: 部署镜像仓库  "
+  log_info " 5: 部署高可用环境 6: k8s环境部署  "
+  log_info " 7: 管理k8s环境    8: 退出操作  "
+  log_info "====================================================="
 }
 
 # 传递文件函数
@@ -41,8 +43,8 @@ scp_files_func(){
   for ip in ${host_list}
   do
      remote_host="${login_user}@${ip}"
-     ssh ${login_user}@${ip} "[ -d ${file_path} ] || mkdir -p ${file_path}"
-     scp ${file_name} ${remote_host}:${file_name}
+     log_exec ssh ${login_user}@${ip} "\'[ -d ${file_path} ] || mkdir -p ${file_path}\'"
+     log_exec scp ${file_name} ${remote_host}:${file_name}
   done
 }
 
@@ -51,21 +53,20 @@ get_softs(){
   softs_name="$1"
   softs_url="$2"
   # 获取软件
-  if [ ! -f "${softs_dir}/${softs_name}" ]
-  then
-    echo "${_C_GREEN} 开始下载指定版本的程序文件 ${_C_RESET}"
+  if [ ! -f "${softs_dir}/${softs_name}" ]; then
+    log_info "开始下载指定版本的程序文件 "
     [ -d "${softs_dir}" ] || mkdir -p "${softs_dir}" 
     pushd "${softs_dir}" >/dev/null
     wget "${softs_url}"
     popd >/dev/null
   else
-    echo "${_C_GREEN} ${softs_dir} 目录下已经存在指定版本的程序文件 ${_C_RESET}"
+    log_info "${softs_dir} 目录下已经存在指定版本的程序文件 "
   fi
 }
 
 # 帮助信息逻辑
 Usage(){
-  echo "请输入有效的操作id"
+  log_info "请输入有效的操作id"
 }
 # 逻辑入口
 read -p "请输入kubernetes集群主机的系统环境(centos|ubuntu|debian),默认值是debian: " os_type
@@ -77,23 +78,23 @@ do
   if [ ${#target_type[@]} -ge ${target_id} ]
   then
     if [ ${target_type[${target_id}-1]} == "基础" ]; then
-       echo "${_C_YELLOW}开始执行基础环境操作...${_C_RESET}"
+       log_warn "开始执行基础环境操作..."
        [ -f ${scripts_dir}/${base_env_scripts} ] && /bin/bash ${scripts_dir}/${base_env_scripts} "${os_type}"
     elif [ ${target_type[${target_id}-1]} == "内核" ]; then
-       echo "${_C_YELLOW}开始执行内核模块配置...${_C_RESET}"
+       log_warn "开始执行内核模块配置..."
        read -p "请输入k8s集群主机列表范围(示例: {12..19}): " num_list
        ip_list=$(expand_ip_list "${num_list}")
        if [ -f "${scripts_dir}/${k8s_kernel_scripts}" ]; then
           scp_files_func "${ip_list}" "${scripts_dir}/${k8s_kernel_scripts}"
           for ip in ${ip_list}
           do
-            ssh ${login_user}@${ip} "/bin/bash ${scripts_dir}/${k8s_kernel_scripts}"
+            log_exec ssh ${login_user}@${ip} "\'/bin/bash ${scripts_dir}/${k8s_kernel_scripts}\'"
           done
        else
-          echo "${_C_RED}脚本 ${scripts_dir}/${k8s_kernel_scripts} 不存在${_C_RESET}"
+          log_error "脚本 ${scripts_dir}/${k8s_kernel_scripts} 不存在"
        fi
     elif [ ${target_type[${target_id}-1]} == "容器" ]; then
-       echo "${_C_YELLOW}开始执行容器环境定制...${_C_RESET}"
+       log_warn "开始执行容器环境定制..."
        read -p "请输入以哪种方式部署(离线-offline,在线-online): " docker_status
        read -p "请输入k8s集群主机列表范围(示例: {12..19}): " num_list
        ip_list=$(expand_ip_list "${num_list}")
@@ -103,10 +104,10 @@ do
            scp_files_func "${ip_list}" "${scripts_dir}/${k8s_docker_online}"
            for ip in ${ip_list}
            do
-             ssh ${login_user}@${ip} "/bin/bash ${scripts_dir}/${k8s_docker_online} ${os_type}"
+             log_exec ssh ${login_user}@${ip} "\'/bin/bash ${scripts_dir}/${k8s_docker_online} ${os_type}\'"
            done
          else
-           echo "${_C_RED}脚本 ${scripts_dir}/${k8s_docker_online} 不存在${_C_RESET}"
+           log_error "脚本 ${scripts_dir}/${k8s_docker_online} 不存在"
          fi
        else
          # 获取docker文件
@@ -116,29 +117,29 @@ do
            scp_files_func "${ip_list}" "${scripts_dir}/${k8s_docker_offline}"
            for ip in ${ip_list}
            do
-             ssh ${login_user}@${ip} "[ -d ${softs_dir} ] || mkdir -p ${softs_dir}"
-             scp ${softs_dir}/${docker_softs} ${login_user}@${ip}:${softs_dir}/${docker_softs}
-             ssh ${login_user}@${ip} "/bin/bash ${scripts_dir}/${k8s_docker_offline}"
+             log_exec ssh ${login_user}@${ip} "\'[ -d ${softs_dir} ] || mkdir -p ${softs_dir}\'"
+             log_exec scp ${softs_dir}/${docker_softs} ${login_user}@${ip}:${softs_dir}/${docker_softs}
+             log_exec ssh ${login_user}@${ip} "\'/bin/bash ${scripts_dir}/${k8s_docker_offline}\'"
            done
          else
-           echo "${_C_RED}脚本 ${scripts_dir}/${k8s_docker_offline} 不存在${_C_RESET}"
+           log_error "脚本 ${scripts_dir}/${k8s_docker_offline} 不存在"
          fi
        fi
        # 部署cri-dockerd服务
        if [ -f "${scripts_dir}/${k8s_cri_scripts}" ]; then
-          /bin/bash ${scripts_dir}/${k8s_cri_scripts} ${ip_list}
+          log_exec /bin/bash ${scripts_dir}/${k8s_cri_scripts} ${ip_list}
        else
-          echo "${_C_RED}脚本 ${scripts_dir}/${k8s_cri_scripts} 不存在${_C_RESET}"
+          log_error "脚本 ${scripts_dir}/${k8s_cri_scripts} 不存在"
        fi
     elif [ ${target_type[${target_id}-1]} == "harbor" ]; then
-       echo "${_C_YELLOW}开始执行镜像仓库部署操作...${_C_RESET}"
+       log_warn "开始执行镜像仓库部署操作..."
        # 获取harbor地址信息
        harbor_address=$(awk '/register/{print $1}' "${confs_dir}/${host_name}")
-       echo "${_C_GREEN}开始执行镜像仓库的容器环境部署操作...${_C_RESET}"
+       log_info "开始执行镜像仓库的容器环境部署操作..."
        scp_files_func "${harbor_address}" "${scripts_dir}/${k8s_docker_offline}"
        scp_files_func "${harbor_address}" "${softs_dir}/${docker_softs}"
        # echo ssh "${login_user}@${harbor_address}" "/bin/bash ${scripts_dir}/${k8s_docker_offline}"
-       ssh "${login_user}@${harbor_address}" "/bin/bash ${scripts_dir}/${k8s_docker_offline}"
+       log_exec ssh "${login_user}@${harbor_address}" "\'/bin/bash ${scripts_dir}/${k8s_docker_offline}\'"
        # exit
        # 获取harbor文件
        get_softs "${compose_softs}" "${compose_url}"      
@@ -147,9 +148,9 @@ do
        scp_files_func "${harbor_address}" "${softs_dir}/${harbor_softs}"
        if [ -f "${scripts_dir}/${k8s_harbor_scripts}" ]; then
          scp_files_func "${harbor_address}" "${scripts_dir}/${k8s_harbor_scripts}"
-         ssh "${login_user}@${harbor_address}" "/bin/bash ${scripts_dir}/${k8s_harbor_scripts} ${os_type}"
+         log_exec ssh "${login_user}@${harbor_address}" "\'/bin/bash ${scripts_dir}/${k8s_harbor_scripts} ${os_type}\'"
        else
-          echo "${_C_RED}脚本 ${scripts_dir}/${k8s_harbor_scripts} 不存在${_C_RESET}"
+          log_error "脚本 ${scripts_dir}/${k8s_harbor_scripts} 不存在"
        fi
        # 所有节点都使用本地镜像仓库
        
@@ -157,7 +158,7 @@ do
        read -p "请输入以哪种方式部署(离线-offline,在线-online): " ha_type
        ha_type="${ha_type:-online}"
        ha_list=$(awk '/-ha/{print $1}' "${confs_dir}/${host_name}")
-       echo "${_C_YELLOW}开始执行高可用环境部署操作...${_C_RESET}"
+       log_warn "开始执行高可用环境部署操作..."
        if [ "${ha_type}" == "online" ]; then
          # 部署haproxy和keepalived服务
          if [ -f "${scripts_dir}/${k8s_ha_online}" ]; then
@@ -165,10 +166,10 @@ do
            for ip in ${ha_list}
            do
              keepalived_state=$(grep ${ip} ${confs_dir}/${host_name} | awk '{print $NF}')
-             ssh ${login_user}@${ip} "/bin/bash ${scripts_dir}/${k8s_ha_online} ${os_type} ${keepalived_state}"
+             log_exec ssh ${login_user}@${ip} "\'/bin/bash ${scripts_dir}/${k8s_ha_online} ${os_type} ${keepalived_state}\'"
            done
          else
-           echo "${_C_RED}脚本 ${scripts_dir}/${k8s_ha_online} 不存在${_C_RESET}"
+           log_error "脚本 ${scripts_dir}/${k8s_ha_online} 不存在"
          fi
        else
          if [ -f "${scripts_dir}/${k8s_ha_offline}" ]; then
@@ -176,31 +177,31 @@ do
            for ip in ${ha_list}
            do
              [ "${os_type}" == "centos" ] && ha_dir='k8s-ha-centos' || ha_dir='k8s-ha-ubuntu'
-             ssh ${login_user}@${ip} "[ -d ${softs_dir} ] || mkdir -p ${softs_dir}"
-             scp -r "${softs_dir}/${ha_dir}" "${login_user}@${ip}:${softs_dir}"
+             log_exec ssh ${login_user}@${ip} "\'[ -d ${softs_dir} ] || mkdir -p ${softs_dir}\'"
+             log_exec scp -r "${softs_dir}/${ha_dir}" "${login_user}@${ip}:${softs_dir}"
              keepalived_state=$(grep ${ip} ${confs_dir}/${host_name} | awk '{print $NF}')
-             ssh ${login_user}@${ip} "/bin/bash ${scripts_dir}/${k8s_ha_offline} ${os_type} ${keepalived_state} ${ha_dir}"
+             log_exec ssh ${login_user}@${ip} "\'/bin/bash ${scripts_dir}/${k8s_ha_offline} ${os_type} ${keepalived_state} ${ha_dir}\'"
            done
          else
-           echo "${_C_RED}脚本 ${scripts_dir}/${k8s_ha_offline} 不存在${_C_RESET}"
+           log_error "脚本 ${scripts_dir}/${k8s_ha_offline} 不存在"
          fi
        fi
     elif [ ${target_type[${target_id}-1]} == "k8s" ]; then
-       echo "${_C_YELLOW}开始执行k8s环境部署操作...${_C_RESET}"
+       log_warn "开始执行k8s环境部署操作..."
        if [ -f "${scripts_dir}/${k8s_cluster_scripts}" ]; then
-         /bin/bash ${scripts_dir}/${k8s_cluster_scripts} "${os_type}"
+         log_exec /bin/bash ${scripts_dir}/${k8s_cluster_scripts} "${os_type}"
        else
-         echo "${_C_RED}脚本 ${scripts_dir}/${k8s_cluster_scripts} 不存在${_C_RESET}"
+         log_error "脚本 ${scripts_dir}/${k8s_cluster_scripts} 不存在"
        fi
     elif [ ${target_type[${target_id}-1]} == "管理" ]; then
-       echo "${_C_YELLOW}开始执行k8s环境管理操作...${_C_RESET}"
+       log_warn "开始执行k8s环境管理操作..."
        if [ -f "${scripts_dir}/${k8s_reset_scripts}" ]; then
-          /bin/bash ${scripts_dir}/${k8s_reset_scripts} "${os_type}"
+          log_exec /bin/bash ${scripts_dir}/${k8s_reset_scripts} "${os_type}"
        else
-          echo "${_C_RED}脚本 ${scripts_dir}/${k8s_reset_scripts} 不存在${_C_RESET}"
+          log_error "脚本 ${scripts_dir}/${k8s_reset_scripts} 不存在"
        fi
     elif [ ${target_type[${target_id}-1]} == "退出" ]; then
-       echo "开始退出管理界面..."
+       log_info "开始退出管理界面..."
        exit
     fi
   else

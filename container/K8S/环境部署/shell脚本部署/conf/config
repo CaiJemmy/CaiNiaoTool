@@ -3,7 +3,7 @@
 login_user='root'
 login_pass='Changeme_12'
 # os_type='debian'
-domain_name='superopsmsb.com'
+domain_name='superops.com'
 underlay_network='10.0.0'
 
 # 基础环境目录
@@ -61,7 +61,7 @@ docker_url="${docker_repo}/${docker_softs}"
 
 # 高可用环境
 # [ha]
-has_ha="true"
+has_ha="false"
 kubernetes_vip='10.0.0.200'
 kubernetes_port='6443'
 haproxy_status_port='9999'
@@ -80,7 +80,7 @@ k8s_version='1.26.1'
 centos_repo_file='/etc/yum.repos.d/kubernetes.repo'
 ubuntu_repo_file='/etc/apt/sources.list.d/kubernetes.list'
 harbor_repo='google_containers'
-harbor_mirror='kubernetes-register.superopsmsb.com'
+harbor_mirror='kubernetes-register.superops.com'
 ali_mirror="registry.aliyuncs.com/${harbor_repo}"
 init_msg='/tmp/msg.txt'
 cri_option='--cri-socket unix:///var/run/cri-dockerd.sock'

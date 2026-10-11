@@ -9,6 +9,8 @@
 
 # 加载配置文件
 source "./lib/utils.sh"
+source "./lib/logging.sh"
+
 root_dir=$(dirname "$PWD")
 [ -f "${root_dir}/conf/config" ] && . "${root_dir}/conf/config" || exit
 
@@ -19,16 +21,16 @@ target_type=(部署 免密 同步 主机名 软件源 退出)
 
 # 菜单
 menu(){
-  echo -e "\e[31m批量设定远程主机免密码认证管理界面\e[0m"
-  echo "====================================================="
-  echo -e "\e[32m 1: 部署环境   2: 免密认证   3: 同步hosts \e[0m"
-  echo -e "\e[32m 4: 设定主机名 5: 更新软件源 6: 退出操作 \e[0m"
-  echo "====================================================="
+  log_info "批量设定远程主机免密码认证管理界面"
+  log_info "====================================================="
+  log_info " 1: 部署环境   2: 免密认证   3: 同步hosts"
+  log_info " 4: 设定主机名 5: 更新软件源 6: 退出操作"
+  log_info "====================================================="
 }
 
 # 更新hosts文件
 update_hosts(){
-  awk '$0~"kubernetes-"{print $1,$2".superopsmsb.com",$2}' "${confs_dir}/${host_name}" >> "${host_file}"
+  awk '$0~"kubernetes-"{print $1,$2".superops.com",$2}' "${confs_dir}/${host_name}" >> "${host_file}"
 }
 
 # expect环境
@@ -36,22 +38,21 @@ expect_install(){
   grep -q "114.114.114.114" /etc/resolv.conf && grep -q "8.8.8.8" /etc/resolv.conf || (cp /etc/resolv.conf /etc/resolv.conf.bak && echo "nameserver 114.114.114.114" > /etc/resolv.conf && echo "nameserver 8.8.8.8" >> /etc/resolv.conf)
 
   if [ -f /usr/bin/expect ];then
-    echo -e "\e[33mexpect环境已经部署完毕\e[0m"
+    log_info "expect环境已经部署完毕"
   else
     read -p "请输入安装expect的方式(在线-online，离线-offline): " install_status
     install_status=${install_status:-online}
     if [ "${install_status}" == "online" ]; then
-      
-      "${cmd_type}" install expect -y >> /dev/null 2>&1 && echo -e "\e[33mexpect软件安装完毕\e[0m" || (echo -e "\e[33mexpect软件安装失败\e[0m" && exit)
+      log_exec "${cmd_type}" install expect -y >> /dev/null 2>&1 && log_info "expect软件安装完毕" || (log_error "expect软件安装失败" && exit)
     else
       if [ "${os_type}" == "centos" ]; then
         filename="${centos_expect}"
-        "${cmd_type}" install -y "${softs_dir}/expect/${filename}"
+        log_exec "${cmd_type}" install -y "${softs_dir}/expect/${filename}"
       else
         filename="${ubuntu_expect}"
         [ -f /var/lib/dpkg/lock-frontend ] && rm -f /var/lib/dpkg/lock-frontend
-        dpkg -i "${softs_dir}/expect/${filename}"
-        apt --fix-broken install -y
+        log_exec dpkg -i "${softs_dir}/expect/${filename}"
+        log_exec apt --fix-broken install -y
       fi
     fi
   fi
@@ -62,7 +63,7 @@ create_authkey(){
   [ -d ${user_dir}/.ssh ] && rm -rf ${user_dir}/.ssh/*
   # 构建秘钥文件对
   /usr/bin/ssh-keygen -t rsa -P "" -f ${user_dir}/.ssh/id_rsa
-  echo -e "\e[33m秘钥文件已经创建完毕\e[0m"
+  log_info "秘钥文件已经创建完毕"
 }
 # expect自动匹配逻辑
 expect_autoauth_func(){
@@ -95,7 +96,7 @@ scp_hosts_func(){
   for ip in ${host_list}
   do
      remote_host="${login_user}@${ip}"
-     scp ${host_file} ${remote_host}:${host_file}
+     log_exec scp ${host_file} ${remote_host}:${host_file}
   done
 }
 
@@ -107,7 +108,7 @@ set_hostname_func(){
   do
      host_name=$(grep ${ip} ${host_file}|awk '{print $NF}'| tr -d '\r\n\t' | xargs)
      remote_host="${login_user}@${ip}"
-     ssh ${remote_host} "hostnamectl set-hostname ${host_name}"
+     log_exec ssh ${remote_host} "\'hostnamectl set-hostname ${host_name}\'"
      ssh ${remote_host} "grep -q '114.114.114.114' /etc/resolv.conf && grep -q '8.8.8.8' /etc/resolv.conf || (cp /etc/resolv.conf /etc/resolv.conf.bak && echo 'nameserver 114.114.114.114' > /etc/resolv.conf && echo 'nameserver 8.8.8.8' >> /etc/resolv.conf)"
   done
 }
@@ -123,53 +124,46 @@ repo_update(){
   fi
   for ip in ${host_list}
   do
-     ssh ${remote_host} "${update_cmd}"
+     log_exec ssh ${remote_host} "\'${update_cmd}\'"
   done
 }
 # 帮助信息逻辑
 Usage(){
-  echo "请输入有效的操作id"
+  log_info "请输入有效的操作id"
 }
 # 逻辑入口
 while true
 do
   menu
   read -p "请输入有效的操作id: " target_id
-  if [ ${#target_type[@]} -ge ${target_id} ]
-  then
-    if [ ${target_type[${target_id}-1]} == "部署" ]
-    then
-       echo "开始部署环境操作..."
+  if [ ${#target_type[@]} -ge ${target_id} ]; then
+    if [ ${target_type[${target_id}-1]} == "部署" ]; then
+       log_info "开始部署环境操作..."
        expect_install
        create_authkey
        update_hosts
-    elif [ ${target_type[${target_id}-1]} == "免密" ]
-    then
+    elif [ ${target_type[${target_id}-1]} == "免密" ]; then
        read -p "请输入需要批量远程主机认证的主机列表范围(示例: {12..19}): " num_list
        ip_list=$(expand_ip_list "${num_list}")
-       echo "开始执行免密认证操作..."
+       log_info "开始执行免密认证操作..."
        sshkey_auth_func ${ip_list}
-    elif [ ${target_type[${target_id}-1]} == "同步" ]
-    then
+    elif [ ${target_type[${target_id}-1]} == "同步" ]; then
        read -p "请输入需要批量远程主机同步hosts的主机列表范围(示例: {12..19}): " num_list
        ip_list=$(expand_ip_list "${num_list}")
-       echo "开始执行同步hosts文件操作..."
+       log_info "开始执行同步hosts文件操作..."
        scp_hosts_func ${ip_list}
-    elif [ ${target_type[${target_id}-1]} == "主机名" ]
-    then
+    elif [ ${target_type[${target_id}-1]} == "主机名" ]; then
        read -p "请输入需要批量设定远程主机主机名的主机列表范围(示例: {12..19}): " num_list
        ip_list=$(expand_ip_list "${num_list}")
-       echo "开始执行设定主机名操作..."
+       log_info "开始执行设定主机名操作..."
        set_hostname_func ${ip_list}
-    elif [ ${target_type[${target_id}-1]} == "软件源" ]
-    then
+    elif [ ${target_type[${target_id}-1]} == "软件源" ]; then
        read -p "请输入需要批量更新远程主机软件源的主机列表范围(示例: {12..19}): " num_list
        ip_list=$(expand_ip_list "${num_list}")
-       echo "开始执行更新主机软件源操作..."
+       log_info "开始执行更新主机软件源操作..."
        repo_update ${ip_list}
-    elif [ ${target_type[${target_id}-1]} == "退出" ]
-    then
-       echo "开始退出管理界面..."
+    elif [ ${target_type[${target_id}-1]} == "退出" ]; then
+       log_info "开始退出管理界面..."
        exit
     fi
   else
